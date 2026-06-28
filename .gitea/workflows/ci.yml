@@ -74,6 +74,34 @@ jobs:
           pip install --break-system-packages build
           python -m build --sdist
 
+      - name: Upload sdist to Gitea release
+        continue-on-error: true
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA }}
+        run: |
+          VERSION=$(cat IRIS_VERSION)
+          ASSET=$(ls dist/Mopidy_*.tar.gz dist/Mopidy-*.tar.gz 2>/dev/null | head -1)
+          API="http://gitea.service:3000/api/v1/repos/secstate/Iris"
+
+          # Delete old continuous tag/release if exists
+          curl -sf -X DELETE "${API}/tags/continuous" \
+            -H "Authorization: token ${GITEA_TOKEN}" || true
+          curl -sf "${API}/releases/tags/continuous" \
+            -H "Authorization: token ${GITEA_TOKEN}" \
+            | python3 -c "import sys,json;print(json.load(sys.stdin).get('id',''))" 2>/dev/null \
+            | xargs -I{} curl -sf -X DELETE "${API}/releases/{}" \
+              -H "Authorization: token ${GITEA_TOKEN}" || true
+
+          # Create release and upload asset
+          RELEASE_ID=$(curl -sf -X POST "${API}/releases" \
+            -H "Authorization: token ${GITEA_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{"tag_name":"continuous","name":"Continuous build","prerelease":true,"target_commitish":"main"}' \
+            | python3 -c "import sys,json;print(json.load(sys.stdin)['id'])")
+          curl -sf -X POST "${API}/releases/${RELEASE_ID}/assets" \
+            -H "Authorization: token ${GITEA_TOKEN}" \
+            -F "attachment=@${ASSET}"
+
       - name: Copy sdist to server
         uses: appleboy/scp-action@v0.1.7
         with:
