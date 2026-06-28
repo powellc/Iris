@@ -124,9 +124,7 @@ jobs:
             -H "${AUTH}" \
             -H "Content-Type: application/json" \
             -d '{"tag_name":"continuous","name":"Continuous build","prerelease":true,"target_commitish":"main"}' \
-            -w "\nCREATE release HTTP %{http_code}\n" \
-            | tee /dev/stderr \
-            | python3 -c "import sys,json;print(json.load(sys.stdin)['id'])" 2>/dev/null) || {
+            | python3 -c "import sys,json;print(json.load(sys.stdin)['id'])") || {
               echo "ERROR: failed to create release"
               exit 1
             }
@@ -136,7 +134,7 @@ jobs:
           curl -f -X POST "${API}/releases/${RELEASE_ID}/assets" \
             -H "${AUTH}" \
             -F "attachment=@${ASSET}" \
-            -w "\nUPLOAD asset HTTP %{http_code}\n" || {
+            -w "UPLOAD asset HTTP %{http_code}\n" >&2 || {
               echo "ERROR: asset upload failed"
               exit 1
             }
