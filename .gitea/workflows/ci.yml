@@ -54,28 +54,40 @@ jobs:
 
       - name: Upload release asset to Gitea
         env:
-          GITEA_TOKEN: ${{ secrets.GITEA}}
+          GITEA_TOKEN: ${{ secrets.GITEA }}
         run: |
+          set -e
           VERSION=$(cat IRIS_VERSION)
           ASSET="dist/Mopidy_Iris-${VERSION}.tar.gz"
           API="https://code.lab.unbl.ink/api/v1/repos/secstate/Iris"
 
-          # Delete previous continuous release and tag
-          curl -s -X DELETE "${API}/releases/tags/continuous" \
-            -H "Authorization: token ${GITEA_TOKEN}" || true
-          curl -s -X DELETE "${API}/tags/continuous" \
+          # Delete old continuous tag (ignore if missing)
+          curl -sf -X DELETE "${API}/tags/continuous" \
             -H "Authorization: token ${GITEA_TOKEN}" || true
 
-          # Create new release (creates tag pointing at main)
-          curl -s -X POST "${API}/releases" \
+          # Delete old continuous release (ignore if missing)
+          OLD_ID=$(curl -sf "${API}/releases/tags/continuous" \
+            -H "Authorization: token ${GITEA_TOKEN}" \
+            | python3 -c "import sys,json;print(json.load(sys.stdin).get('id',''))" 2>/dev/null || true)
+          if [ -n "$OLD_ID" ]; then
+            curl -sf -X DELETE "${API}/releases/${OLD_ID}" \
+              -H "Authorization: token ${GITEA_TOKEN}"
+          fi
+
+          # Create new release — capture the release ID
+          RELEASE_JSON=$(curl -sf -X POST "${API}/releases" \
             -H "Authorization: token ${GITEA_TOKEN}" \
             -H "Content-Type: application/json" \
-            -d '{"tag_name":"continuous","name":"Continuous build","prerelease":true,"target_commitish":"main"}'
+            -d '{"tag_name":"continuous","name":"Continuous build","prerelease":true,"target_commitish":"main"}')
+          echo "Release created: $RELEASE_JSON"
 
-          # Upload sdist asset
-          curl -s -X POST "${API}/releases/tags/continuous/assets" \
+          RELEASE_ID=$(echo "$RELEASE_JSON" | python3 -c "import sys,json;print(json.load(sys.stdin)['id'])")
+
+          # Upload asset using numeric release ID (compatible with all Gitea versions)
+          curl -sf -X POST "${API}/releases/${RELEASE_ID}/assets" \
             -H "Authorization: token ${GITEA_TOKEN}" \
             -F "attachment=@${ASSET}"
+          echo "Asset uploaded successfully"
 
       - name: Install on server from release
         uses: appleboy/ssh-action@v1.0.3
