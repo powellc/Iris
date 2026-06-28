@@ -38,6 +38,10 @@ jobs:
         with:
           node-version: 18
 
+      - name: Get version
+        id: version
+        run: echo "version=$(cat IRIS_VERSION)" >> "$GITHUB_OUTPUT"
+
       - name: Build frontend assets
         run: |
           npm ci
@@ -48,23 +52,42 @@ jobs:
           pip install build
           python -m build --sdist
 
-      - name: Copy sdist to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: mopidy-dev.service
-          username: root
-          key: ${{ secrets.JAIL_KEY }}
-          target: /tmp/iris-deploy/
-          source: dist/
+      - name: Upload release asset to Gitea
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        run: |
+          VERSION=$(cat IRIS_VERSION)
+          ASSET="dist/Mopidy_Iris-${VERSION}.tar.gz"
+          API="https://code.lab.unbl.ink/api/v1/repos/secstate/Iris"
 
-      - name: Install and restart
+          # Delete previous continuous release and tag
+          curl -s -X DELETE "${API}/releases/tags/continuous" \
+            -H "Authorization: token ${GITEA_TOKEN}" || true
+          curl -s -X DELETE "${API}/tags/continuous" \
+            -H "Authorization: token ${GITEA_TOKEN}" || true
+
+          # Create new release (creates tag pointing at main)
+          curl -s -X POST "${API}/releases" \
+            -H "Authorization: token ${GITEA_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d '{"tag_name":"continuous","name":"Continuous build","prerelease":true,"target_commitish":"main"}'
+
+          # Upload sdist asset
+          curl -s -X POST "${API}/releases/tags/continuous/assets" \
+            -H "Authorization: token ${GITEA_TOKEN}" \
+            -F "attachment=@${ASSET}"
+
+      - name: Install on server from release
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: mopidy-dev.service
           username: root
           key: ${{ secrets.JAIL_KEY }}
-          script: |
-            pip uninstall -y --break-system-packages mopidy-iris
-            pip install --break-system-packages /tmp/iris-deploy/dist/*.tar.gz
-            rm -rf /tmp/iris-deploy
-            service mopidy restart
+          envs: VERSION
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        script: |
+          pip uninstall -y --break-system-packages mopidy-iris
+          pip install --break-system-packages \
+            "https://code.lab.unbl.ink/secstate/Iris/releases/download/continuous/Mopidy_Iris-${VERSION}.tar.gz"
+          service mopidy restart
