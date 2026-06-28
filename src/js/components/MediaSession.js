@@ -136,7 +136,6 @@ class MediaSession extends React.Component {
     const { audioRef } = this.state;
 
     return (
-      // eslint-disable-next-line jsx-a11y/media-has-caption
       <audio
         id="media-session"
         src="assets/silence.mp3"
