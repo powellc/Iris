@@ -55,7 +55,7 @@ function findSmartQueueButton(renderer) {
       ? btn.props.children
       : [btn.props.children];
     return children.some(
-      (child) => child.props && child.props.name === 'auto_awesome',
+      (child) => child.props && child.props.name === 'magic',
     );
   });
 }
