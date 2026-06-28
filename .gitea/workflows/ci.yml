@@ -67,7 +67,7 @@ jobs:
       - name: Build frontend assets
         run: |
           npm ci
-          npm run build
+          npm run prod
 
       - name: Build Python sdist
         run: |
