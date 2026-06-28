@@ -201,7 +201,7 @@ const PlaybackControls = () => {
           className={`control${smartQueue ? ' control--active' : ''} tooltip`}
           onClick={toggleSmartQueue}
         >
-          <Icon name="auto_awesome" type="material" />
+          <Icon name="magic" type="material" />
           <span className="tooltip__content">
             <I18n path="playback_controls.smart_queue" />
           </span>
