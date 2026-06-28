@@ -83,30 +83,64 @@ jobs:
         env:
           GITEA_TOKEN: ${{ secrets.GITEA }}
         run: |
+          set -x
           VERSION=$(cat IRIS_VERSION)
+          echo "Version: ${VERSION}"
+
           ASSET=$(ls dist/Mopidy_*.tar.gz dist/Mopidy-*.tar.gz 2>/dev/null | head -1)
+          echo "Asset: ${ASSET}"
+          if [ -z "$ASSET" ]; then
+            echo "ERROR: no sdist tarball found in dist/"
+            ls -la dist/ 2>/dev/null || echo "dist/ does not exist"
+            exit 1
+          fi
+          if [ ! -f "$ASSET" ]; then
+            echo "ERROR: asset file missing: ${ASSET}"
+            exit 1
+          fi
+
+          AUTH="Authorization: token ${GITEA_TOKEN}"
           API="http://gitea.service:3000/api/v1/repos/secstate/Iris"
 
           # Delete old release first (by tag lookup), then delete the tag
+          echo "--- Looking up existing release ---"
           OLD_ID=$(curl -sf "${API}/releases/tags/continuous" \
-            -H "Authorization: token ${GITEA_TOKEN}" \
-            | python3 -c "import sys,json;print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+            -H "${AUTH}" \
+            | python3 -c "import sys,json;print(json.load(sys.stdin).get('id',''))" 2>/dev/null || echo "")
           if [ -n "$OLD_ID" ]; then
-            curl -sf -X DELETE "${API}/releases/${OLD_ID}" \
-              -H "Authorization: token ${GITEA_TOKEN}" || true
+            echo "Deleting old release ID=${OLD_ID}"
+            curl -f -X DELETE "${API}/releases/${OLD_ID}" -H "${AUTH}" \
+              -w "\nDELETE release HTTP %{http_code}\n" || echo "Delete release returned non-zero"
+          else
+            echo "No existing release found"
           fi
-          curl -sf -X DELETE "${API}/tags/continuous" \
-            -H "Authorization: token ${GITEA_TOKEN}" || true
 
-          # Create release and upload asset
-          RELEASE_ID=$(curl -sf -X POST "${API}/releases" \
-            -H "Authorization: token ${GITEA_TOKEN}" \
+          echo "--- Deleting old tag ---"
+          curl -f -X DELETE "${API}/tags/continuous" -H "${AUTH}" \
+            -w "DELETE tag HTTP %{http_code}\n" || echo "Tag delete non-zero (may not exist)"
+
+          echo "--- Creating release ---"
+          RELEASE_ID=$(curl -f -X POST "${API}/releases" \
+            -H "${AUTH}" \
             -H "Content-Type: application/json" \
             -d '{"tag_name":"continuous","name":"Continuous build","prerelease":true,"target_commitish":"main"}' \
-            | python3 -c "import sys,json;print(json.load(sys.stdin)['id'])")
-          curl -sf -X POST "${API}/releases/${RELEASE_ID}/assets" \
-            -H "Authorization: token ${GITEA_TOKEN}" \
-            -F "attachment=@${ASSET}"
+            -w "\nCREATE release HTTP %{http_code}\n" \
+            | tee /dev/stderr \
+            | python3 -c "import sys,json;print(json.load(sys.stdin)['id'])" 2>/dev/null) || {
+              echo "ERROR: failed to create release"
+              exit 1
+            }
+          echo "Created release ID=${RELEASE_ID}"
+
+          echo "--- Uploading asset ---"
+          curl -f -X POST "${API}/releases/${RELEASE_ID}/assets" \
+            -H "${AUTH}" \
+            -F "attachment=@${ASSET}" \
+            -w "\nUPLOAD asset HTTP %{http_code}\n" || {
+              echo "ERROR: asset upload failed"
+              exit 1
+            }
+          echo "--- Done ---"
 
       - name: Copy sdist to server
         uses: appleboy/scp-action@v0.1.7
