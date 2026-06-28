@@ -81,7 +81,7 @@ jobs:
           set -e
           VERSION=$(cat IRIS_VERSION)
           ASSET="dist/Mopidy_Iris-${VERSION}.tar.gz"
-          API="https://code.lab.unbl.ink/api/v1/repos/secstate/Iris"
+          API="http://gitea.service:3000/api/v1/repos/secstate/Iris"
 
           # Delete old continuous tag (ignore if missing)
           curl -sf -X DELETE "${API}/tags/continuous" \
