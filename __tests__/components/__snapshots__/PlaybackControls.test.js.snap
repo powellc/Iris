@@ -167,7 +167,7 @@ exports[`<PlaybackControls /> should render correctly 1`] = `
       <Icon
         data-qa-file="PlaybackControls"
         data-qa-node="Icon"
-        name="auto_awesome"
+        name="magic"
         type="material"
       />
       <span
