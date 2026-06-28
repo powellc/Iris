@@ -27,6 +27,28 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Notify success (ntfy)
+        if: success()
+        run: |
+          curl -fsS \
+            -H "Title: Iris CI success" \
+            -H "Priority: low" \
+            -H "Tags: success,iris" \
+            -H "Actions: view, Changes, ${{ gitea.server_url }}/${{ gitea.repository }}/commit/${{ gitea.sha }}; view, Build, ${{ gitea.server_url }}/${{ gitea.repository }}/actions/runs/${{ gitea.run_id }}" \
+            -d "✅ Build succeeded: ${{ gitea.repository }} @ ${{ gitea.sha }}" \
+            https://ntfy.unbl.ink/drone
+
+      - name: Notify failure (ntfy)
+        if: failure()
+        run: |
+          curl -fsS \
+            -H "Title: Iris CI failure" \
+            -H "Priority: high" \
+            -H "Tags: failure,iris" \
+            -H "Actions: view, Changes, ${{ gitea.server_url }}/${{ gitea.repository }}/commit/${{ gitea.sha }}; view, Build, ${{ gitea.server_url }}/${{ gitea.repository }}/actions/runs/${{ gitea.run_id }}" \
+            -d "❌ Build failed: ${{ gitea.repository }} @ ${{ gitea.sha }}" \
+            https://ntfy.unbl.ink/drone
+
   deploy:
     if: github.ref == 'refs/heads/main' && needs.test.result == 'success'
     runs-on: ubuntu-latest
@@ -103,3 +125,25 @@ jobs:
           pip install --break-system-packages \
             "https://code.lab.unbl.ink/secstate/Iris/releases/download/continuous/Mopidy_Iris-${VERSION}.tar.gz"
           service mopidy restart
+
+      - name: Notify deploy success (ntfy)
+        if: success()
+        run: |
+          curl -fsS \
+            -H "Title: Iris deploy success" \
+            -H "Priority: low" \
+            -H "Tags: success,iris,deploy" \
+            -H "Actions: view, View changes, ${{ gitea.server_url }}/${{ gitea.repository }}/commit/${{ gitea.sha }}; view, View build, ${{ gitea.server_url }}/${{ gitea.repository }}/actions/runs/${{ gitea.run_id }}" \
+            -d "🚀 Deploy succeeded: ${{ gitea.ref_name }} (${{ gitea.sha }})" \
+            https://ntfy.unbl.ink/drone
+
+      - name: Notify deploy failure (ntfy)
+        if: failure()
+        run: |
+          curl -fsS \
+            -H "Title: Iris deploy failure" \
+            -H "Priority: high" \
+            -H "Tags: failure,iris,deploy" \
+            -H "Actions: view, View changes, ${{ gitea.server_url }}/${{ gitea.repository }}/commit/${{ gitea.sha }}; view, View build, ${{ gitea.server_url }}/${{ gitea.repository }}/actions/runs/${{ gitea.run_id }}" \
+            -d "💥 Deploy failed: ${{ gitea.ref_name }} (${{ gitea.sha }})" \
+            https://ntfy.unbl.ink/drone
