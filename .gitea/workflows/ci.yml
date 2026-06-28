@@ -74,55 +74,26 @@ jobs:
           pip install --break-system-packages build
           python -m build --sdist
 
-      - name: Upload release asset to Gitea
-        env:
-          GITEA_TOKEN: ${{ secrets.GITEA }}
-        run: |
-          set -e
-          VERSION=$(cat IRIS_VERSION)
-          API="http://gitea.service:3000/api/v1/repos/secstate/Iris"
+      - name: Copy sdist to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: mopidy-dev.service
+          username: root
+          key: ${{ secrets.JAIL_KEY }}
+          target: /tmp/iris-deploy/
+          source: dist/
 
-          # Delete old continuous tag (ignore if missing)
-          curl -sf -X DELETE "${API}/tags/continuous" \
-            -H "Authorization: token ${GITEA_TOKEN}" || true
-
-          # Delete old continuous release (ignore if missing)
-          OLD_ID=$(curl -sf "${API}/releases/tags/continuous" \
-            -H "Authorization: token ${GITEA_TOKEN}" \
-            | python3 -c "import sys,json;print(json.load(sys.stdin).get('id',''))" 2>/dev/null || true)
-          if [ -n "$OLD_ID" ]; then
-            curl -sf -X DELETE "${API}/releases/${OLD_ID}" \
-              -H "Authorization: token ${GITEA_TOKEN}"
-          fi
-
-          # Create new release
-          RELEASE_JSON=$(curl -sf -X POST "${API}/releases" \
-            -H "Authorization: token ${GITEA_TOKEN}" \
-            -H "Content-Type: application/json" \
-            -d '{"tag_name":"continuous","name":"Continuous build","prerelease":true,"target_commitish":"main"}')
-
-          # Upload asset using upload_url from response
-          UPLOAD_URL=$(echo "$RELEASE_JSON" | python3 -c "import sys,json;print(json.load(sys.stdin)['upload_url'].split('{')[0])")
-          ASSET=$(ls dist/Mopidy_*.tar.gz dist/Mopidy-*.tar.gz 2>/dev/null | head -1)
-          curl -sf -X POST "${UPLOAD_URL}" \
-            -H "Authorization: token ${GITEA_TOKEN}" \
-            -F "attachment=@${ASSET}"
-
-      - name: Install on server from release
+      - name: Install on server
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: mopidy-dev.service
           username: root
           key: ${{ secrets.JAIL_KEY }}
-          envs: VERSION,GITEA_TOKEN
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-          GITEA_TOKEN: ${{ secrets.GITEA }}
-        script: |
-          pip uninstall -y --break-system-packages mopidy-iris
-          pip install --break-system-packages \
-            "http://secstate:${GITEA_TOKEN}@gitea.service:3000/secstate/Iris/releases/download/continuous/Mopidy_Iris-${VERSION}.tar.gz"
-          service mopidy restart
+          script: |
+            pip uninstall -y --break-system-packages mopidy-iris
+            pip install --break-system-packages /tmp/iris-deploy/dist/*.tar.gz
+            rm -rf /tmp/iris-deploy
+            service mopidy restart
 
       - name: Notify deploy success (ntfy)
         if: success()
