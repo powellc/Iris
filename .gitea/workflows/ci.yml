@@ -49,12 +49,12 @@ jobs:
 
       - name: Build Python sdist
         run: |
-          pip install build
+          pip install --break-system-packages build
           python -m build --sdist
 
       - name: Upload release asset to Gitea
         env:
-          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+          GITEA_TOKEN: ${{ secrets.GITEA}}
         run: |
           VERSION=$(cat IRIS_VERSION)
           ASSET="dist/Mopidy_Iris-${VERSION}.tar.gz"
