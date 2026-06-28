@@ -80,7 +80,6 @@ jobs:
         run: |
           set -e
           VERSION=$(cat IRIS_VERSION)
-          ASSET="dist/Mopidy_Iris-${VERSION}.tar.gz"
           API="http://gitea.service:3000/api/v1/repos/secstate/Iris"
 
           # Delete old continuous tag (ignore if missing)
@@ -96,20 +95,18 @@ jobs:
               -H "Authorization: token ${GITEA_TOKEN}"
           fi
 
-          # Create new release — capture the release ID
+          # Create new release
           RELEASE_JSON=$(curl -sf -X POST "${API}/releases" \
             -H "Authorization: token ${GITEA_TOKEN}" \
             -H "Content-Type: application/json" \
             -d '{"tag_name":"continuous","name":"Continuous build","prerelease":true,"target_commitish":"main"}')
-          echo "Release created: $RELEASE_JSON"
 
-          RELEASE_ID=$(echo "$RELEASE_JSON" | python3 -c "import sys,json;print(json.load(sys.stdin)['id'])")
-
-          # Upload asset using numeric release ID (compatible with all Gitea versions)
-          curl -sf -X POST "${API}/releases/${RELEASE_ID}/assets" \
+          # Upload asset using upload_url from response
+          UPLOAD_URL=$(echo "$RELEASE_JSON" | python3 -c "import sys,json;print(json.load(sys.stdin)['upload_url'].split('{')[0])")
+          ASSET=$(ls dist/Mopidy_*.tar.gz dist/Mopidy-*.tar.gz 2>/dev/null | head -1)
+          curl -sf -X POST "${UPLOAD_URL}" \
             -H "Authorization: token ${GITEA_TOKEN}" \
             -F "attachment=@${ASSET}"
-          echo "Asset uploaded successfully"
 
       - name: Install on server from release
         uses: appleboy/ssh-action@v1.0.3
@@ -117,13 +114,14 @@ jobs:
           host: mopidy-dev.service
           username: root
           key: ${{ secrets.JAIL_KEY }}
-          envs: VERSION
+          envs: VERSION,GITEA_TOKEN
         env:
           VERSION: ${{ steps.version.outputs.version }}
+          GITEA_TOKEN: ${{ secrets.GITEA }}
         script: |
           pip uninstall -y --break-system-packages mopidy-iris
           pip install --break-system-packages \
-            "https://code.lab.unbl.ink/secstate/Iris/releases/download/continuous/Mopidy_Iris-${VERSION}.tar.gz"
+            "http://secstate:${GITEA_TOKEN}@gitea.service:3000/secstate/Iris/releases/download/continuous/Mopidy_Iris-${VERSION}.tar.gz"
           service mopidy restart
 
       - name: Notify deploy success (ntfy)
