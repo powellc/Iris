@@ -87,7 +87,7 @@ jobs:
           VERSION=$(cat IRIS_VERSION)
           echo "Version: ${VERSION}"
 
-          ASSET=$(ls dist/Mopidy_*.tar.gz dist/Mopidy-*.tar.gz 2>/dev/null | head -1)
+          ASSET=$(ls dist/*.tar.gz 2>/dev/null | head -1)
           echo "Asset: ${ASSET}"
           if [ -z "$ASSET" ]; then
             echo "ERROR: no sdist tarball found in dist/"
