@@ -64,7 +64,7 @@ jobs:
           username: root
           key: ${{ secrets.JAIL_KEY }}
           script: |
-            pip uninstall -y mopidy-iris
-            pip install /tmp/iris-deploy/dist/*.tar.gz
+            pip uninstall -y --break-system-packages mopidy-iris
+            pip install --break-system-packages /tmp/iris-deploy/dist/*.tar.gz
             rm -rf /tmp/iris-deploy
             service mopidy restart
