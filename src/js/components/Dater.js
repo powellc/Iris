@@ -80,10 +80,16 @@ const dater = (type, data) => {
       // A four-character date indicates just a year (rather than a full date)
       if (data.length == 4) {
         return data;
-
-        // Digest as a date string
       }
-      var date = new Date(data);
+
+      // Parse ISO dates (yyyy-mm-dd) manually to avoid UTC interpretation
+      var date;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+        var parts = data.split('-');
+        date = new Date(+parts[0], +parts[1] - 1, +parts[2]);
+      } else {
+        date = new Date(data);
+      }
       return `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
 
     case 'ago':
