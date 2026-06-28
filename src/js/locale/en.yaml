@@ -205,6 +205,7 @@ context_menu:
   refresh: Refresh
 playback_controls:
   consume: Consume
+  smart_queue: Smart Queue
   shuffle: Shuffle
   repeat: Repeat
   snapcast_not_enabled: No streams (Snapcast disabled)

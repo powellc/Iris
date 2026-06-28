@@ -28,6 +28,9 @@ const PlaybackControls = () => {
   const consume = useSelector((state) => state.mopidy.consume);
   const random = useSelector((state) => state.mopidy.random);
   const repeat = useSelector((state) => state.mopidy.repeat);
+  const host = useSelector((state) => state.mopidy.host);
+  const port = useSelector((state) => state.mopidy.port);
+  const ssl = useSelector((state) => state.mopidy.ssl);
   const streamTitle = useSelector((state) => state.core.streamTitle);
   const currentTrackUri = useSelector((state) => state.core.current_track?.uri);
   const currentTrackSelector = makeItemSelector(currentTrackUri);
@@ -49,6 +52,26 @@ const PlaybackControls = () => {
   useEffect(() => {
     setPlaybackPosition(time_position);
   }, [time_position]);
+
+  const [smartQueue, setSmartQueue] = useState(() => localStorage.getItem('smartQueue') === 'true');
+
+  useEffect(() => {
+    localStorage.setItem('smartQueue', smartQueue);
+  }, [smartQueue]);
+
+  const toggleSmartQueue = () => {
+    const newState = !smartQueue;
+    setSmartQueue(newState);
+
+    const protocol = ssl ? 'https' : 'http';
+    const url = `${protocol}://${host}:${port}/smartplaylists/smart-queue`;
+
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled: newState }),
+    }).catch(() => {});
+  };
 
   const handleContextMenu = (e) => {
     e.preventDefault();
@@ -171,6 +194,16 @@ const PlaybackControls = () => {
           <Icon name="restaurant" type="material" />
           <span className="tooltip__content">
             <I18n path="playback_controls.consume" />
+          </span>
+        </button>
+        <button
+          type="button"
+          className={`control${smartQueue ? ' control--active' : ''} tooltip`}
+          onClick={toggleSmartQueue}
+        >
+          <Icon name="auto_awesome" type="material" />
+          <span className="tooltip__content">
+            <I18n path="playback_controls.smart_queue" />
           </span>
         </button>
         <button
