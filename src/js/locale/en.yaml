@@ -89,6 +89,7 @@ fields:
     owner: Owner
     followers: Followers
     popularity: Popularity
+    date: Date
 time:
   seconds:
     short: secs

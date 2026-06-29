@@ -196,6 +196,10 @@ class Albums extends React.Component {
         label: i18n('fields.filters.updated'),
       },
       {
+        value: 'release_date',
+        label: i18n('fields.filters.date'),
+      },
+      {
         value: 'tracks',
         label: i18n('fields.filters.tracks'),
       },
