@@ -12,6 +12,7 @@ import Icon from '../../components/Icon';
 import ErrorBoundary from '../../components/ErrorBoundary';
 import {
   set,
+  setSort,
   setWindowTitle,
   hideContextMenu,
 } from '../../services/ui/actions';
@@ -24,9 +25,10 @@ import { arrayOf, sortItems, applyFilter } from '../../util/arrays';
 import { i18n, I18n } from '../../locale';
 import Button from '../../components/Button';
 import { encodeUri, decodeUri } from '../../util/format';
-import { makeLoadingSelector } from '../../util/selectors';
+import { makeLoadingSelector, getSortSelector } from '../../util/selectors';
 import ErrorMessage from '../../components/ErrorMessage';
 
+const SORT_KEY = 'browse_directory';
 const loadingSelector = makeLoadingSelector(['mopidy_library.(browse|lookup)']);
 
 const Breadcrumbs = ({ uri }) => {
@@ -77,6 +79,7 @@ const BrowseDirectory = () => {
   const [filter, setFilter] = useState('');
   const directoryInState = useSelector(({ mopidy }) => mopidy?.directory || {});
   const view = useSelector(({ ui }) => ui?.library_directory_view);
+  const [sortField, sortReverse] = useSelector((state) => getSortSelector(state, SORT_KEY, 'name'));
   const loading = useSelector(loadingSelector);
 
   let { uri, name } = useParams();
@@ -101,12 +104,21 @@ const BrowseDirectory = () => {
     dispatch(hideContextMenu());
   }
 
+  const onSortChange = (field) => {
+    let reverse = false;
+    if (field !== null && sortField === field) {
+      reverse = !sortReverse;
+    }
+    dispatch(setSort(SORT_KEY, field, reverse));
+    dispatch(hideContextMenu());
+  }
+
   const playAll = () => {
     if (!tracks || !tracks.length) return;
 
     dispatch(
       playURIs({
-        uris: arrayOf('uri', sortItems(tracks, 'name')),
+        uris: arrayOf('uri', sortItems(tracks, sortField, sortReverse)),
         from: {
           name: 'Browse',
           type: 'browse',
@@ -137,12 +149,35 @@ const BrowseDirectory = () => {
 
   let subdirectories = directory?.subdirectories;
   let tracks = directory?.tracks;
-  subdirectories = sortItems(subdirectories, 'name');
-  tracks = sortItems(tracks, 'name');
+  subdirectories = sortItems(subdirectories, sortField, sortReverse);
+  tracks = sortItems(tracks, sortField, sortReverse);
   if (filter && filter !== '') {
     subdirectories = applyFilter('name', filter, subdirectories);
     tracks = applyFilter('name', filter, tracks);
   }
+
+  const sort_options = [
+    {
+      value: 'name',
+      label: i18n('fields.filters.name'),
+    },
+    {
+      value: 'artist',
+      label: i18n('fields.filters.artist'),
+    },
+    {
+      value: 'album',
+      label: i18n('fields.filters.album'),
+    },
+    {
+      value: 'last_modified',
+      label: i18n('fields.filters.updated'),
+    },
+    {
+      value: 'uri',
+      label: i18n('fields.filters.source'),
+    },
+  ];
 
   const view_options = [
     {
@@ -161,6 +196,15 @@ const BrowseDirectory = () => {
         initialValue={filter}
         handleChange={setFilter}
         onSubmit={() => dispatch(hideContextMenu())}
+      />
+      <DropdownField
+        icon="swap_vert"
+        name={i18n('fields.sort')}
+        value={sortField}
+        valueAsLabel
+        options={sort_options}
+        selected_icon={sortField ? (sortReverse ? 'keyboard_arrow_up' : 'keyboard_arrow_down') : null}
+        handleChange={onSortChange}
       />
       <DropdownField
         icon="visibility"
