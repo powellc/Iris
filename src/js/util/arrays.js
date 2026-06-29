@@ -160,18 +160,19 @@ const sortItems = (array, property, reverse = false) => {
       case 'user':
         return item.user ? item.user.id : undefined;
       case 'date':
-        return item.album?.date || item.date || '';
+        return item.release_date || '';
       default:
         return item[property];
     }
   };
 
-  // Special handling for date sort: sort by date first, then track number
+  // Special handling for date sort: sort by release date first, then track number
   if (property === 'date') {
     return orderBy(array, [
-      item => item.album?.date || item.date || '',
+      item => item.release_date || '',
+      item => item.album?.name || '',
       item => item.track_number || 0,
-    ], [reverse ? 'desc' : 'asc', 'asc']);
+    ], [reverse ? 'desc' : 'asc', 'asc', 'asc']);
   }
 
   return orderBy(array, sorter, (reverse ? 'desc' : 'asc'));

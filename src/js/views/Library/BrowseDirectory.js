@@ -152,8 +152,12 @@ const BrowseDirectory = () => {
   subdirectories = sortItems(subdirectories, sortField, sortReverse);
   tracks = sortItems(tracks, sortField, sortReverse);
   if (filter && filter !== '') {
+    const q = filter.toLowerCase();
     subdirectories = applyFilter('name', filter, subdirectories);
-    tracks = applyFilter('name', filter, tracks);
+    tracks = tracks.filter((track) => {
+      const match = (val) => String(val).toLowerCase().includes(q);
+      return match(track.album?.name || '') || match(track.name || '') || match(track.artists?.[0]?.name || '');
+    });
   }
 
   const sort_options = [
