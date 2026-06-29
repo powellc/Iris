@@ -12,6 +12,13 @@ Built and maintained by James Barnsley.
 .. image:: https://img.shields.io/badge/donate-paypal-blue.svg?style=flat-square
    :target: https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=james%40barnsley%2enz&lc=NZ&item_name=James%20Barnsley&currency_code=USD&bn=PP%2dDonationsBF%3abtn_donate_LG%2egif%3aNonHosted
 
+Fork notes
+**********
+
+- Add support for mopidy-smartlists
+- Add support for filtering the root Album view by release date
+- General test clean up
+
 Features
 ********
 
