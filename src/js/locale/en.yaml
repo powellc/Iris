@@ -280,6 +280,7 @@ artist:
       disc_track: Track number
       name: Name
       album: Album
+      date: Date
   related_artists:
     title: Related artists
   about:

@@ -55,6 +55,10 @@ export default ({ artist }) => {
       value: 'album',
       label: i18n('artist.tracks.sort.album'),
     },
+    {
+      value: 'date',
+      label: i18n('artist.tracks.sort.date'),
+    },
   ];
 
   return (
